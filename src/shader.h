@@ -15,6 +15,7 @@ public:
     void set1i(const char* name, int v) const;
     void set1f(const char* name, float v) const;
     void set3f(const char* name, float x, float y, float z) const;
+    void set4f(const char* name, float x, float y, float z, float w) const;
     void setMatrix4(const char* name, const float* m) const;
 
 private:

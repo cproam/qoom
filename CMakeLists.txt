@@ -71,10 +71,20 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(assimp)
 
-target_link_libraries(qoom PRIVATE glfw glad_gl_core_33 glm::glm assimp::assimp)
+# TinyEXR (header-only)
+FetchContent_Declare(
+    tinyexr
+    GIT_REPOSITORY https://github.com/syoyo/tinyexr.git
+    GIT_TAG v1.0.8
+)
+FetchContent_MakeAvailable(tinyexr)
+
+
+target_link_libraries(qoom PRIVATE glfw glad_gl_core_33 glm::glm assimp::assimp tinyexr)
 
 target_include_directories(qoom PRIVATE
     ${tinygltf_SOURCE_DIR}
+    ${tinyexr_SOURCE_DIR}
 )
 
 if (WIN32)

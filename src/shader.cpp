@@ -71,6 +71,9 @@ void ShaderProgram::set1f(const char* name, float v) const {
 void ShaderProgram::set3f(const char* name, float x, float y, float z) const {
     glUniform3f(glGetUniformLocation(program_, name), x, y, z);
 }
+void ShaderProgram::set4f(const char* name, float x, float y, float z, float w) const {
+    glUniform4f(glGetUniformLocation(program_, name), x, y, z, w);
+}
 void ShaderProgram::setMatrix4(const char* name, const float* m) const {
     glUniformMatrix4fv(glGetUniformLocation(program_, name), 1, GL_FALSE, m);
 }
