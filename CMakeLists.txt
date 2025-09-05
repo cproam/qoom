@@ -56,6 +56,12 @@ add_executable(qoom
     src/main.cpp
     src/shader.cpp
     src/assimp_model.cpp
+    src/environment.cpp
+    src/renderer.cpp
+    src/controller.cpp
+    src/level.cpp
+    src/voxel_world.cpp
+    src/stb_image_impl.cpp
 )
 
 ## Assimp (model loading)
@@ -124,3 +130,11 @@ add_custom_target(copy_assets ALL
     DEPENDS ${ASSETS_DIR}
 )
 add_dependencies(qoom copy_assets)
+
+# Copy levels for runtime
+set(LEVELS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/levels)
+add_custom_target(copy_levels ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${LEVELS_DIR} $<TARGET_FILE_DIR:qoom>/levels
+    DEPENDS ${LEVELS_DIR}
+)
+add_dependencies(qoom copy_levels)

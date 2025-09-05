@@ -27,3 +27,6 @@ CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
 
+# Blender temp files
+*.blend1
+*.blend2

@@ -12,7 +12,10 @@ vec2 dirToEquirect(vec3 d){
     float u = (phi / (2.0*3.14159265)) + 0.5;
     u = fract(u);
     float v = theta / 3.14159265;
-    return vec2(u, v);
+    vec2 uv = vec2(u, v);
+    vec2 texel = 1.0 / vec2(textureSize(uEnvEquirect, 0));
+    uv.x = fract(uv.x + 0.5 * texel.x);
+    return uv;
 }
 
 void main(){

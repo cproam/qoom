@@ -32,6 +32,9 @@ uniform float uEnvSpecStrength;  // scale for specular IBL
 uniform float uEnvDiffStrength;  // scale for diffuse IBL
 uniform float uOverrideRoughness; // < 0 to ignore, else force [0,1]
 uniform float uOverrideMetallic;  // < 0 to ignore, else force [0,1]
+// Box projection controls (for voxel visualization)
+uniform int uUseBoxUVMapping;     // 0 = use mesh UVs, 1 = box-project using world pos
+uniform float uBoxUVScale;        // tiles per meter (e.g., 1.0 = 1 repeat per meter)
 
 const float PI = 3.14159265;
 
@@ -54,7 +57,11 @@ mat3 makeTBN(vec3 N, vec3 T, float handedness)
 		float theta = acos(clamp(d.y, -1.0, 1.0));
 		float u = phi / (2.0*PI) + 0.5;
 		u = fract(u); // wrap to [0,1)
-		return vec2(u, theta / PI);
+		vec2 uv = vec2(u, theta / PI);
+		// half-texel offset on U to avoid border sampling causing seams
+		vec2 texel = 1.0 / vec2(textureSize(uEnvEquirect, 0));
+		uv.x = fract(uv.x + 0.5 * texel.x);
+		return uv;
 	}
 
 void main() {
@@ -63,7 +70,21 @@ void main() {
 	vec3 V = normalize(uCameraPos - vWorldPos);
 	vec3 H = normalize(L + V);
 
-	vec3 albedo = texture(uBaseColorTex, vUV).rgb * uBaseColorFactor.rgb;
+	// Choose UVs: mesh UVs or box-projected from world position
+	vec2 baseUV = vUV;
+	if (uUseBoxUVMapping == 1) {
+		vec3 an = abs(N);
+		if (an.x >= an.y && an.x >= an.z) {
+			baseUV = vWorldPos.zy;
+		} else if (an.y >= an.x && an.y >= an.z) {
+			baseUV = vWorldPos.xz;
+		} else {
+			baseUV = vWorldPos.xy;
+		}
+		baseUV *= uBoxUVScale;
+	}
+
+	vec3 albedo = texture(uBaseColorTex, baseUV).rgb * uBaseColorFactor.rgb;
 	float metallic = clamp(uMetallicFactor, 0.0, 1.0);
 	float roughness = clamp(uRoughnessFactor, 0.04, 1.0);
 	float ao = 1.0;
@@ -143,11 +164,41 @@ void main() {
 	vec3 color = (diffuse + spec) * uLightColor * NdotL * ao * shadow + uAmbientColor * albedo * ao;
 
 	// Simple IBL: sample environment for diffuse and specular components
-	vec3 envDiff = texture(uEnvEquirect, dirToEquirect(N)).rgb;
+	vec2 uvN = dirToEquirect(N);
+	// Cross-fade across seam for diffuse sample
+	float seamW = 1.5 / float(textureSize(uEnvEquirect, 0).x); // ~1.5 texels
+	vec3 envDiff;
+	if (uvN.x < seamW) {
+		vec3 c0 = texture(uEnvEquirect, uvN).rgb;
+		vec3 c1 = texture(uEnvEquirect, vec2(uvN.x + 1.0, uvN.y)).rgb;
+		float t = smoothstep(0.0, seamW, uvN.x);
+		envDiff = mix(c1, c0, t);
+	} else if (uvN.x > 1.0 - seamW) {
+		vec3 c0 = texture(uEnvEquirect, uvN).rgb;
+		vec3 c1 = texture(uEnvEquirect, vec2(uvN.x - 1.0, uvN.y)).rgb;
+		float t = smoothstep(1.0, 1.0 - seamW, uvN.x);
+		envDiff = mix(c1, c0, t);
+	} else {
+		envDiff = texture(uEnvEquirect, uvN).rgb;
+	}
 	float kd_ibl = (1.0 - metallic); // simple energy term for IBL
 	vec3 diffuseIBL = kd_ibl * (albedo / PI) * envDiff * uEnvDiffStrength;
 	vec3 R = reflect(-V, N);
-	vec3 envSpec = texture(uEnvEquirect, dirToEquirect(R)).rgb;
+	vec2 uvR = dirToEquirect(R);
+	vec3 envSpec;
+	if (uvR.x < seamW) {
+		vec3 c0 = texture(uEnvEquirect, uvR).rgb;
+		vec3 c1 = texture(uEnvEquirect, vec2(uvR.x + 1.0, uvR.y)).rgb;
+		float t = smoothstep(0.0, seamW, uvR.x);
+		envSpec = mix(c1, c0, t);
+	} else if (uvR.x > 1.0 - seamW) {
+		vec3 c0 = texture(uEnvEquirect, uvR).rgb;
+		vec3 c1 = texture(uEnvEquirect, vec2(uvR.x - 1.0, uvR.y)).rgb;
+		float t = smoothstep(1.0, 1.0 - seamW, uvR.x);
+		envSpec = mix(c1, c0, t);
+	} else {
+		envSpec = texture(uEnvEquirect, uvR).rgb;
+	}
 	vec3 specColor = mix(vec3(0.05), albedo, metallic); // slightly boosted dielectric F0
 	float gloss = pow(1.0 - roughness, 2.2);
 	float dielectricBoost = mix(1.8, 1.0, metallic); // boost dielectrics so reflections are visible

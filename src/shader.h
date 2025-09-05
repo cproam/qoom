@@ -8,6 +8,7 @@ public:
     ~ShaderProgram();
 
     bool loadFromFiles(const std::string& vsPath, const std::string& fsPath, std::string* log = nullptr);
+    bool loadFromSource(const char* vsSrc, const char* fsSrc, std::string* log = nullptr);
     void use() const { glUseProgram(program_); }
     GLuint id() const { return program_; }
 

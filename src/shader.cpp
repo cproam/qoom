@@ -62,6 +62,23 @@ bool ShaderProgram::loadFromFiles(const std::string& vsPath, const std::string& 
     return true;
 }
 
+bool ShaderProgram::loadFromSource(const char* vsSrc, const char* fsSrc, std::string* log)
+{
+    GLuint v = compile(GL_VERTEX_SHADER, vsSrc, log);
+    if (!v) return false;
+    GLuint f = compile(GL_FRAGMENT_SHADER, fsSrc, log);
+    if (!f) { glDeleteShader(v); return false; }
+    program_ = glCreateProgram();
+    glAttachShader(program_, v);
+    glAttachShader(program_, f);
+    glLinkProgram(program_);
+    glDeleteShader(v);
+    glDeleteShader(f);
+    GLint ok=0; glGetProgramiv(program_, GL_LINK_STATUS, &ok);
+    if (!ok){ if (log){ GLint len=0; glGetProgramiv(program_, GL_INFO_LOG_LENGTH, &len); if (len>1){ log->resize(len); glGetProgramInfoLog(program_, len, nullptr, log->data()); } } glDeleteProgram(program_); program_=0; return false; }
+    return true;
+}
+
 void ShaderProgram::set1i(const char* name, int v) const {
     glUniform1i(glGetUniformLocation(program_, name), v);
 }
